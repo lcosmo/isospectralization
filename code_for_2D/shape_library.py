@@ -84,9 +84,8 @@ def tfeig(X):
 def load_mesh(path):
     VERT = np.loadtxt(path+'/mesh.vert')
     TRIV = np.loadtxt(path+'/mesh.triv',dtype='int32')-1
-    evals = np.loadtxt(path+'./evals.txt');   
     
-    return VERT, TRIV, evals
+    return VERT, TRIV
 
 def totuple(a):
     return [ tuple(i) for i in a]
@@ -120,6 +119,7 @@ def ismember(T, pts):
             if np.sum(T[r,c]==pts)>0: s=s+1;
         out[r] = s>0;
     return out
+
 
 def prepare_mesh(VERT,TRIV,dtype='float32'):
     edges = np.ones(shape=(np.shape(VERT)[0],np.shape(VERT)[0],2),dtype='int32')*-1
@@ -246,7 +246,6 @@ def prepare_mesh(VERT,TRIV,dtype='float32'):
             nx_e = nx_e[[1,0]]
         ord_list.append(nx_e)
     ord_list=np.asarray(ord_list)  
-    
 
     return np.asarray(VERT,dtype),TRIV, n, m, Ik, Ih, Ik_k, Ih_k, Tpi, Txi, Tni, iM, Windices, Ael, Bary, bound_edges, ord_list
 

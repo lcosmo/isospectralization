@@ -64,21 +64,24 @@ def tfeig(X):
 def load_mesh(path):
     VERT = np.loadtxt(path+'/mesh.vert')
     TRIV = np.loadtxt(path+'/mesh.triv',dtype='int32')-1
-    evals = np.loadtxt(path+'./evals.txt');   
     
-    return VERT, TRIV, evals
+    return VERT, TRIV
 
 def totuple(a):
     return [ tuple(i) for i in a]
     
 def save_ply(V,T,filename):
+    if(V.shape[1]==2):
+        Vt = np.zeros((V.shape[0],3))
+        Vt[:,0:2] = V
+        V = Vt
+        
     vertex = np.array(totuple(V),dtype=[('x', 'f4'), ('y', 'f4'),('z', 'f4')])
-#     print([ tuple([i]) for i in T])
     face = np.array([ tuple([i]) for i in T],dtype=[('vertex_indices', 'i4', (3,))])
     el1 = PlyElement.describe(vertex, 'vertex')
     el2 = PlyElement.describe(face, 'face')
     PlyData([el1,el2]).write(filename)
-    #PlyData([el2]).write('some_binary.ply')
+    
     
 def ismember(T, pts):
     out = np.zeros(np.shape(T)[0])

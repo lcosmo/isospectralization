@@ -17,17 +17,67 @@ class OptimizationParams:
         self.decay_target = 0.01
         
         if(smoothing=='displacement'):
-            self.curvature_reg = 1e3
-            self.smoothness_reg = 1e3
+            self.curvature_reg = 2e3
+            self.smoothness_reg = 2e3
         else:
             self.curvature_reg = 1e5
             self.smoothness_reg = 5e4
         
-        self.volume_reg = 2e1
+        self.volume_reg = 1e1
         self.l2_reg = 2e6
         
-        self.opt_step = 0.0005
+        self.opt_step = 0.00025
         self.min_eval_loss = 0.05
+        
+        
+def tf_calc_lap(mesh,VERT): 
+    [Xori,TRIV,n, m, Ik, Ih, Ik_k, Ih_k, Tpi, Txi, Tni, iM, Windices, Ael, Bary] = mesh
+    
+    dtype='float32'
+    if(VERT.dtype=='float64'):
+        dtype='float64'
+    if(VERT.dtype=='float16'):
+        dtype='float16'
+
+    L2 = tf.expand_dims(tf.reduce_sum(tf.matmul(iM,VERT)**2,axis=1),axis=1)
+    L=tf.sqrt(L2);
+
+    def  fAk(Ik,Ik_k):
+        Ikp=np.abs(Ik);
+        Sk = tf.matmul(Ikp,L)/2    
+        SkL = Sk-L;    
+        Ak = Sk*(tf.matmul(Ik_k[:,:,0],Sk)-tf.matmul(Ik_k[:,:,0],L))\
+                       *(tf.matmul(Ik_k[:,:,0],Sk)-tf.matmul(Ik_k[:,:,1],L))\
+                       *(tf.matmul(Ik_k[:,:,0],Sk)-tf.matmul(Ik_k[:,:,2],L))
+        return tf.sqrt(tf.abs(Ak)+1e-20)
+
+    Ak = fAk(Ik,Ik_k)
+    Ah = fAk(Ih,Ih_k)
+
+    #sparse representation of the Laplacian matrix
+    W = -tf.matmul(Ik,L2)/(8*Ak)-tf.matmul(Ih,L2)/(8*Ah);
+
+
+    #compute indices to build the dense Laplacian matrix
+    Windtf = tf.SparseTensor(indices=Windices, values=-np.ones((m),dtype), dense_shape=[n*n, m])
+    Wfull  = -tf.reshape(tf.sparse_tensor_dense_matmul(Windtf,W),(n,n))
+    Wfull = (Wfull + tf.transpose(Wfull))
+
+    #actual Laplacian
+    Lx = Wfull-tf.diag(tf.reduce_sum(Wfull,axis=1))
+    S = (tf.matmul(Ael,Ak)+tf.matmul(Ael,Ah))/6;
+    
+    return Lx,S,L,Ak;
+ 
+    
+def calc_evals(VERT,TRIV):
+    mesh = prepare_mesh(VERT,TRIV,'float64')
+    Lx,S,L,Ak = tf_calc_lap(mesh,mesh[0])
+    Si = tf.diag(tf.sqrt(1/S[:,0]))
+    Lap =  tf.matmul(Si,tf.matmul(Lx,Si));
+    [evals,evecs]  = tf.self_adjoint_eig( Lap )
+    return tfeval(evals)
+
     
 def build_graph(mesh, evals, nevals,nfix, step=1.0, params=OptimizationParams()): #smoothing='absolute', numsteps=40000):
         """Build the tensorflow graph
@@ -56,47 +106,11 @@ def build_graph(mesh, evals, nevals,nfix, step=1.0, params=OptimizationParams())
                 
         graph.X=Xori*scaleX+dX;
         
-        L2 = tf.expand_dims(tf.reduce_sum(tf.matmul(iM,graph.X)**2,axis=1),axis=1)
-        L=tf.sqrt(L2);
-
-        def  fAk(Ik,Ik_k):
-            Ikp=np.abs(Ik);
-            Sk = tf.matmul(Ikp,L)/2    
-            SkL = Sk-L;    
-            Ak = Sk*(tf.matmul(Ik_k[:,:,0],Sk)-tf.matmul(Ik_k[:,:,0],L))\
-                           *(tf.matmul(Ik_k[:,:,0],Sk)-tf.matmul(Ik_k[:,:,1],L))\
-                           *(tf.matmul(Ik_k[:,:,0],Sk)-tf.matmul(Ik_k[:,:,2],L))
-            return tf.sqrt(tf.abs(Ak)+1e-20)
-
-        Ak = fAk(Ik,Ik_k)
-        Ah = fAk(Ih,Ih_k)
-        
-        #sparse representation of the Laplacian matrix
-        W = -tf.matmul(Ik,L2)/(8*Ak)-tf.matmul(Ih,L2)/(8*Ah);
-       
-    
-        #compute indices to build the dense Laplacian matrix
-        Adj = np.ndarray(shape=(n,n),dtype=dtype)
-        #fullidx = np.ndarray(shape=(m,2),dtype='int64')
-        #indices = sparse.csr_matrix(np.transpose(Windices)).indices
-        #for i in range(m):
-        #    ri = indices[i]
-        #    fullidx[i,:] = [int(ri/n),ri%n] 
-
-
-        Windtf = tf.SparseTensor(indices=Windices.astype('int32'), values=-np.ones((m),dtype), dense_shape=[n*n, m])
-        Wfull  = -tf.reshape(tf.sparse_tensor_dense_matmul(Windtf,W),(n,n))
-        Wfull = (Wfull + tf.transpose(Wfull))
-
-        #actual Laplacian
-        Lx = Wfull-tf.diag(tf.reduce_sum(Wfull,axis=1))
-
-        S = (tf.matmul(Ael,Ak)+tf.matmul(Ael,Ah))/6;
-        Si = tf.diag(tf.sqrt(1/S[:,0]))
+        Lx,S,L,Ak = tf_calc_lap(mesh,graph.X)
 
         #Normalized Laplacian
+        Si = tf.diag(tf.sqrt(1/S[:,0]))
         Lap =  tf.matmul(Si,tf.matmul(Lx,Si));
-        #Lap = (Lap+tf.transpose(Lap))/2 #ensure symmetric Laplacian
 
         
         #Spectral decomposition approach
@@ -144,20 +158,14 @@ def build_graph(mesh, evals, nevals,nfix, step=1.0, params=OptimizationParams())
 
             
         graph.cost_spectral = graph.cost_evals_f1 + graph.vcW + graph.vcL -  graph.Volume + graph.l2_reg
-        #graph.cost_notspect = graph.cost_evals_f2 + graph.vcW + graph.vcL
-        
+
         optimizer = tf.train.AdamOptimizer(params.opt_step)
-        #optimizer = tf.train.GradientDescentOptimizer(params.opt_step)
         
         #gradient clipping  
         gvs = optimizer.compute_gradients(graph.cost_spectral)
         capped_gvs = [(tf.clip_by_value(grad, -0.0001, 0.0001), var) for grad, var in gvs if grad!=None]
         graph.train_op_spectral = optimizer.apply_gradients(capped_gvs, global_step=graph.global_step)
 
-        #gvs = optimizer.compute_gradients(graph.cost_notspect)
-        #capped_gvs = [(tf.clip_by_value(grad, -0.0001, 0.0001), var) for grad, var in gvs if grad!=None]
-        #graph.train_op_notspect = optimizer.apply_gradients(capped_gvs, global_step=graph.global_step)
-        
         [graph.s_,v]  = tf.self_adjoint_eig( Lap )        
         return graph
         

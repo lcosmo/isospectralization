@@ -28,7 +28,7 @@ class OptimizationParams:
         self.inner_reg = 1e0
         self.bound_reg = 2e1
         
-def calc_lap(mesh,VERT): 
+def tf_calc_lap(mesh,VERT): 
     [_,TRIV,n, m, Ik, Ih, Ik_k, Ih_k, Tpi, Txi, Tni, iM, Windices, Ael, Bary, bound_edges, ord_list] = mesh
     dtype='float32'
     if(VERT.dtype=='float64'):
@@ -66,6 +66,15 @@ def calc_lap(mesh,VERT):
     
     return Lx,S,L,Ak;
  
+    
+def calc_evals(VERT,TRIV):
+    mesh = prepare_mesh(VERT,TRIV)
+    Lx,S,L,Ak = tf_calc_lap(mesh,mesh[0])
+    Si = tf.diag(tf.sqrt(1/S[:,0]))
+    Lap =  tf.matmul(Si,tf.matmul(Lx,Si));
+    [evals,evecs]  = tf.self_adjoint_eig( Lap )
+    return tfeval(evals)
+
     
 def build_graph(mesh, evals, nevals, step=1.0, params=OptimizationParams()): 
         """Build the tensorflow graph
@@ -108,7 +117,7 @@ def build_graph(mesh, evals, nevals, step=1.0, params=OptimizationParams()):
                 
         graph.X=(Xori + dXb*bound_vert + dXi*(1-bound_vert))*scaleX;
 
-        Lx,S,L,Ak = calc_lap(mesh,graph.X)
+        Lx,S,L,Ak = tf_calc_lap(mesh,graph.X)
 
         #Normalized Laplacian
         Si = tf.diag(tf.sqrt(1/S[:,0]))
