@@ -2,7 +2,7 @@
 # Isospectralization
 Implementation of the paper: Cosmo et al., "Isospectralization, or how to hear shape, style, and correspondence", arXiv 2018 https://arxiv.org/abs/1811.11465
 
-The paper describes a method to optimize the R^2/R^3 embedding of a discretized surface (triangular mesh) as to align the eigenvalues of the spectral decomposition of its LBO to a target set of eigenvalues (possibly derived from a target shape).
+The paper describes a method to optimize the R^2/R^3 embedding of a discretized surface (triangular mesh) as to align the eigenvalues of its LBO to a target set of eigenvalues (possibly derived from a target shape).
 
 The code is sub-divided in two folders containing the code for the relative embedding space (R^2 and R^3).
 Each folder contains the following python files:
@@ -12,6 +12,7 @@ Each folder contains the following python files:
 
 If you are using this code, please cite:
 
+```
 @article{DBLP:journals/corr/abs-1811-11465,
   author    = {Luca Cosmo and
                Mikhail Panine and
@@ -30,3 +31,4 @@ If you are using this code, please cite:
   biburl    = {https://dblp.org/rec/bib/journals/corr/abs-1811-11465},
   bibsource = {dblp computer science bibliography, https://dblp.org}
 }
+```
