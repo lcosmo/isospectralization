@@ -13,22 +13,11 @@ Each folder contains the following python files:
 If you are using this code, please cite:
 
 ```
-@article{DBLP:journals/corr/abs-1811-11465,
-  author    = {Luca Cosmo and
-               Mikhail Panine and
-               Arianna Rampini and
-               Maks Ovsjanikov and
-               Michael M. Bronstein and
-               Emanuele Rodol{\`{a}}},
-  title     = {Isospectralization, or how to hear shape, style, and correspondence},
-  journal   = {CoRR},
-  volume    = {abs/1811.11465},
-  year      = {2018},
-  url       = {http://arxiv.org/abs/1811.11465},
-  archivePrefix = {arXiv},
-  eprint    = {1811.11465},
-  timestamp = {Fri, 30 Nov 2018 12:44:28 +0100},
-  biburl    = {https://dblp.org/rec/bib/journals/corr/abs-1811-11465},
-  bibsource = {dblp computer science bibliography, https://dblp.org}
+@InProceedings{Cosmo_2019_CVPR,
+  author = {Cosmo, Luca and Panine, Mikhail and Rampini, Arianna and Ovsjanikov, Maks and Bronstein, Michael M. and Rodola, Emanuele},
+  title = {Isospectralization, or How to Hear Shape, Style, and Correspondence},
+  booktitle = {The IEEE Conference on Computer Vision and Pattern Recognition (CVPR)},
+  month = {June},
+  year = {2019}
 }
 ```
