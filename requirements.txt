@@ -5,4 +5,4 @@ vispy==0.5.3
 numpy==1.16.3
 matplotlib==3.0.3
 plyfile==0.7
-ipython==7.5.0
+ipython==7.16.3
